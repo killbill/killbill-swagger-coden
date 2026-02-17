@@ -117,6 +117,8 @@ public class KillbillJavaGenerator extends AbstractJavaCodegen implements Codege
 
         typeMapping.put("array", "List");
         typeMapping.put("map", "Map");
+        typeMapping.put("date", "LocalDate");
+        typeMapping.put("DateTime", "ZonedDateTime");
 
         typeMapping.put("file", "java.io.File");
 
@@ -128,8 +130,8 @@ public class KillbillJavaGenerator extends AbstractJavaCodegen implements Codege
         importMapping.put("List", "java.util.List");
         importMapping.put("LinkedList", "java.util.LinkedList");
         importMapping.put("ArrayList", "java.util.ArrayList");
-        importMapping.put("DateTime", "org.joda.time.DateTime");
-        importMapping.put("LocalDate", "org.joda.time.LocalDate");
+        importMapping.put("ZonedDateTime", "java.time.ZonedDateTime");
+        importMapping.put("LocalDate", "java.time.LocalDate");
         importMapping.put("BigDecimal", "java.math.BigDecimal");
         importMapping.put("HashMap", "java.util.HashMap");
         importMapping.put("Map", "java.util.Map");
@@ -217,17 +219,18 @@ public class KillbillJavaGenerator extends AbstractJavaCodegen implements Codege
             addAllImportsIfRequired(ext, imports);
             convertToExtendedCodegenParam(ext, imports);
             if (shouldAddDateTimeMethod(op)) {
-                addImportIfRequired(imports, "org.joda.time.DateTime");
-                addImportIfRequired(imports, "org.joda.time.LocalDate");
+                addImportIfRequired(imports, "java.time.ZonedDateTime");
+                addImportIfRequired(imports, "java.time.LocalDate");
                 final ExtendedCodegenOperation ext2 = new ExtendedCodegenOperation(op);
                 addAllImportsIfRequired(ext2, imports);
-                List<CodegenParameter> allParams = ext2.allParams;
-                for (CodegenParameter parameter : allParams) {
-                    if (isDateParameter(parameter)) {
-                        parameter.dataFormat = "date-time";
-                        parameter.isDate = false;
-                        parameter.isDateTime = true;
-                        parameter.dataType = "DateTime";
+                for (List<CodegenParameter> paramList : Arrays.asList(ext2.allParams, ext2.queryParams)) {
+                    for (CodegenParameter parameter : paramList) {
+                        if (isDateParameter(parameter)) {
+                            parameter.dataFormat = "date-time";
+                            parameter.isDate = false;
+                            parameter.isDateTime = true;
+                            parameter.dataType = "ZonedDateTime";
+                        }
                     }
                 }
                 convertToExtendedCodegenParam(ext2, imports);
@@ -444,7 +447,12 @@ public class KillbillJavaGenerator extends AbstractJavaCodegen implements Codege
                     returnContainer.equals("array") && this.returnBaseType != null;
 
             if (isReturnModelRefContainer) {
-                this.returnType = String.format("%ss", this.returnBaseType);
+                // ZonedDateTime wrapper class is still called DateTimes (hand-maintained)
+                if ("ZonedDateTime".equals(this.returnBaseType)) {
+                    this.returnType = "DateTimes";
+                } else {
+                    this.returnType = String.format("%ss", this.returnBaseType);
+                }
             }
             this.isStream = produces != null && !produces.isEmpty() && produces.get(0).get("mediaType").equals("application/octet-stream");
             this.hasNonRequiredDefaultQueryParams = this.queryParams

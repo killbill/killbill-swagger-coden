@@ -29,7 +29,12 @@
         {{/isMapContainer}}
         {{^isMapContainer}}
         if ({{paramName}} != null) {
+            {{#isDateTime}}
+            queryParams.put("{{baseName}}", DateTimeFormatter.ISO_OFFSET_DATE_TIME.format({{paramName}}));
+            {{/isDateTime}}
+            {{^isDateTime}}
             queryParams.put("{{baseName}}", String.valueOf({{paramName}}));
+            {{/isDateTime}}
         }
         {{/isMapContainer}}
         {{/isListContainer}}
