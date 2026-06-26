@@ -19,6 +19,7 @@ public class KillbillPythonGenerator extends PythonClientCodegen implements Code
     private static final String PACKAGE_NAME = "killbill";
     private static final String PACKAGE_VERSION = "0.0.1-SNAPSHOT";
     private static final Boolean EXCLUDE_TESTS = true;
+    private static final String ENTITY_CLASSNAME = "Entity";
 
     /**
      * Configures the type of generator.
@@ -149,7 +150,9 @@ public class KillbillPythonGenerator extends PythonClientCodegen implements Code
     @Override
     public Map<String, Object> postProcessModels(Map<String, Object> objs) {
         // process enum in models
-        return postProcessModelsEnum(objs);
+        objs = postProcessModelsEnum(objs);
+        enforceEntityPropertyOrder(objs);
+        return objs;
     }
 
     // Remove 'x_killbill_' prefix
@@ -160,5 +163,67 @@ public class KillbillPythonGenerator extends PythonClientCodegen implements Code
             param = param.replace(str, "");
         }
         return param;
+    }
+
+    private void enforceEntityPropertyOrder(Map<String, Object> objs) {
+        Object models = objs.get("models");
+        if (!(models instanceof List)) {
+            return;
+        }
+
+        for (Object modelObject : (List<?>) models) {
+            if (!(modelObject instanceof Map)) {
+                continue;
+            }
+
+            Object model = ((Map<?, ?>) modelObject).get("model");
+            if (!(model instanceof CodegenModel)) {
+                continue;
+            }
+
+            CodegenModel codegenModel = (CodegenModel) model;
+            if (!ENTITY_CLASSNAME.equals(codegenModel.classname)) {
+                continue;
+            }
+
+            enforceEntityPropertyOrder(codegenModel.vars);
+            enforceEntityPropertyOrder(codegenModel.requiredVars);
+            enforceEntityPropertyOrder(codegenModel.optionalVars);
+            enforceEntityPropertyOrder(codegenModel.readOnlyVars);
+            enforceEntityPropertyOrder(codegenModel.readWriteVars);
+            enforceEntityPropertyOrder(codegenModel.allVars);
+            enforceEntityPropertyOrder(codegenModel.parentVars);
+        }
+    }
+
+    private void enforceEntityPropertyOrder(List<CodegenProperty> properties) {
+        if (properties == null || properties.size() < 2) {
+            return;
+        }
+
+        properties.sort((left,right) -> Integer.compare(entityPropertyOrder(left), entityPropertyOrder(right)));
+
+        for (int i = 0; i < properties.size(); i++) {
+            properties.get(i).hasMore = i < properties.size() - 1;
+        }
+    }
+
+    // Keep the original Python positional constructor ABI: Entity(id, updated_date, created_date).
+    private int entityPropertyOrder(CodegenProperty property) {
+        if (property == null) {
+            return Integer.MAX_VALUE;
+        } else if (isEntityProperty(property, "id", "id")) {
+            return 0;
+        } else if (isEntityProperty(property, "updatedDate", "updated_date")) {
+            return 1;
+        } else if (isEntityProperty(property, "createdDate", "created_date")) {
+            return 2;
+        } else {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    private boolean isEntityProperty(CodegenProperty property, String baseName, String name) {
+        return baseName.equals(property.baseName) || name.equals(property.name);
     }
 }
