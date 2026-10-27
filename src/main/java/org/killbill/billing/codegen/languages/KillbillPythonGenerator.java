@@ -17,7 +17,10 @@ public class KillbillPythonGenerator extends PythonClientCodegen implements Code
     // source folder where to write the files
     protected String apiVersion = "0.0.1-SNAPSHOT";
     private static final String PACKAGE_NAME = "killbill";
-    private static final String PACKAGE_VERSION = "0.0.1-SNAPSHOT";
+    // Previously "0.0.1-SNAPSHOT". That is a Maven-style version, not a valid PEP 440 version,
+    // so current setuptools/pip reject it (InvalidVersion) when running setup.py. "0.0.1.dev0" is the
+    // PEP 440 equivalent of a snapshot.
+    private static final String PACKAGE_VERSION = "0.0.1.dev0";
     private static final Boolean EXCLUDE_TESTS = true;
     private static final String ENTITY_CLASSNAME = "Entity";
 
